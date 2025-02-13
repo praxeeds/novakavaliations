@@ -1,0 +1,89 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  password      String
+  name          String
+  role          Role       @default(COLLABORATOR)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  examAttempts  ExamAttempt[]
+  createdExams  Exam[]     @relation("CreatedBy")
+}
+
+model Exam {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  timeLimit   Int        // em minutos
+  createdBy   User       @relation("CreatedBy", fields: [creatorId], references: [id])
+  creatorId   String
+  questions   Question[]
+  attempts    ExamAttempt[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  isActive    Boolean    @default(true)
+}
+
+model Question {
+  id          String     @id @default(cuid())
+  examId      String
+  exam        Exam       @relation(fields: [examId], references: [id])
+  type        QuestionType
+  content     String
+  options     Json?      // Para questões de múltipla escolha
+  correctAnswer String?
+  order       Int
+  timeLimit   Int?       // Limite de tempo opcional por questão
+  answers     Answer[]
+}
+
+model ExamAttempt {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  examId    String
+  exam      Exam       @relation(fields: [examId], references: [id])
+  startTime DateTime   @default(now())
+  endTime   DateTime?
+  status    AttemptStatus @default(IN_PROGRESS)
+  answers   Answer[]
+  score     Float?
+}
+
+model Answer {
+  id            String     @id @default(cuid())
+  attemptId     String
+  attempt       ExamAttempt @relation(fields: [attemptId], references: [id])
+  questionId    String
+  question      Question   @relation(fields: [questionId], references: [id])
+  content       String
+  timeSpent     Int        // tempo gasto em segundos
+  isCorrect     Boolean?
+  createdAt     DateTime   @default(now())
+}
+
+enum Role {
+  ADMIN
+  COLLABORATOR
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TEXT
+  SIMULATION
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  DISQUALIFIED
+}
